@@ -4,8 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-aes-gcm = { version = "0.10.3", features = [""] }
+chrono = "0.4.38"
 clap = { version = "4.5.7", features = ["derive"] }
+contentful = "0.8.0"
 directories = "5.0.1"
 inquire = "0.7.5"
 reqwest = "0.12.5"

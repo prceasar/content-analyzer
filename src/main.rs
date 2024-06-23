@@ -16,6 +16,11 @@ struct Cli {
 
 #[derive(Serialize, Deserialize)]
 struct Config {
+    space_configs: HashMap<String,SpaceConfig>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct SpaceConfig {
     api_token: String,
 }
 
@@ -32,7 +37,7 @@ fn main() {
     let config: Config = serde_json::from_str(&config_data).unwrap();
 
     let api_token = if config.api_token.is_empty() {
-        prompt_for_token(&config_path)
+        prompt_for_token(&config_path, &cli.space_id)
     } else {
         let use_existing_token = inquire::Confirm::new("Use existing API token?")
             .with_default(true)
@@ -41,12 +46,16 @@ fn main() {
         if use_existing_token {
             config.api_token
         } else {
-            prompt_for_token(&config_path)
+            prompt_for_token(&config_path, &cli.space_id)  
         }
     };
 
     // write the token back to the config and save it
-    let config = Config { api_token: api_token.clone() }; // Clone api_token before moving
+    // based on the passed in space_id, it should get the right config and override that with the new token
+    let space_config = config.space_configs.get(&cli.space_id).unwrap();
+    space_config.api_token = api_token.clone();
+    config.space_configs.insert(cli.space_id, space_config);
+    let config = Config { space_configs: config.space_configs };
     let config_data = serde_json::to_string(&config).unwrap();
     let mut config_file = File::create(config_path).unwrap();
     config_file.write_all(config_data.as_bytes()).unwrap();
@@ -55,15 +64,17 @@ fn main() {
     // Use the api_token as needed here
 }
 
-fn prompt_for_token(config_path: &std::path::Path) -> String {
+fn prompt_for_token(config_path: &std::path::Path, space_id: &String) -> String {
     let token = Password::new("Please enter your API token:")
         .with_display_toggle_enabled()
         .without_confirmation()
         .prompt()
         .unwrap();
-    let config = Config { api_token: token };
+    let mut config: Config = serde_json::from_str(&fs::read_to_string(config_path).unwrap()).unwrap();
+    let space_config = config.space_configs.entry(space_id.clone()).or_insert(SpaceConfig { api_token: token.clone() });
+    space_config.api_token = token.clone();
     let config_data = serde_json::to_string(&config).unwrap();
     let mut config_file = File::create(config_path).unwrap();
     config_file.write_all(config_data.as_bytes()).unwrap();
-    config.api_token
+    token
 }

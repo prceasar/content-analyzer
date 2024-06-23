@@ -1,1 +1,1 @@
-pub mod contentful;
+pub mod models;
